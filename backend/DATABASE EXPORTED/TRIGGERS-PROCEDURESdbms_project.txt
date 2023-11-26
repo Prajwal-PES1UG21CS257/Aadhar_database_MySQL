@@ -1,0 +1,91 @@
+##  Users Creation and granting privileges
+
+CREATE USER 'admin'@'localhost'
+IDENTIFIED BY 'passwordvs code';
+
+GRANT SELECT, INSERT, UPDATE, DELETE 
+ON aadhaar.aadhar_card
+to 'admin'@'localhost';
+
+CREATE USER 'user1'@'localhost'
+
+GRANT INSERT, SELECT 
+ON  aadhaar.enrolls
+to 'user1'@'localhost';
+
+GRANT SELECT, UPDATE
+ON aadhaar.aadhar_card
+to 'user1'@'localhost';
+
+SELECT GRANTS FOR 'admin'@'localhost'
+SELECT GRANTS FOR 'user1'@'localhost'
+
+
+## Trigger
+
+DELIMITER //
+CREATE TRIGGER CheckDOB
+BEFORE INSERT ON Aadhar_card
+FOR EACH ROW
+BEGIN
+	DECLARE date2 DATE;
+	SELECT current_date() into date2;
+	IF NEW.dob > date2 THEN 
+		SIGNAL SQLSTATE '45000'
+		SET MESSAGE_TEXT = 'Invalid dob: Date must not exceed current date';
+		END IF;
+END; //
+DELIMITER ;
+
+## Procedure
+
+DELIMITER &&
+CREATE PROCEDURE `display_details` (IN var1 INTEGER)
+BEGIN
+	SELECT *  FROM aadhar_card WHERE uid = var1;
+END&&
+DELIMITER ;
+
+call display_details(54);
+
+
+
+# SELECT A.name, A.uid, A.gender, A.dob, B.relation, (SELECT A.name  FROM aadhar_card A JOIN family1 B ON A.uid = B.uid_of_dependee WHERE  B.uid_of_dependee = 50) AS Dependee
+# FROM aadhar_card A
+# JOIN Family1 B ON A.uid = B.uid_of_dependent
+#WHERE B.uid_of_dependee = 50;
+
+# SELECT A.name as Dependee FROM aadhar_card A JOIN family1 B ON A.uid = B.uid_of_dependee WHERE  B.uid_of_dependee = 50;
+
+## Nested and Join Queries
+
+SELECT A.name, A.uid, A.gender, A.dob, B.relation,
+  (SELECT C.name FROM aadhar_card C JOIN family1 D ON C.uid = D.uid_of_dependee WHERE D.uid_of_dependee = 50 LIMIT 1) AS Dependee
+FROM aadhar_card A
+JOIN Family1 B ON A.uid = B.uid_of_dependent
+WHERE B.uid_of_dependee = 50;
+
+SELECT A.name, A.uid, A.gender, A.dob, B.relation, (SELECT C.name FROM aadhar_card C JOIN family1 D ON C.uid = D.uid_of_dependee WHERE D.uid_of_dependee = 50 LIMIT 1) AS Dependee FROM aadhar_card A JOIN Family1 B ON A.uid = B.uid_of_dependent WHERE B.uid_of_dependee = 50;
+
+## Aggregate function 
+
+SELECT centre_id, count(*) AS Appointments
+FROM enrolls
+GROUP BY centre_id;
+
+SELECT centre_id, count(*) AS Appointments FROM enrolls GROUP BY centre_id;
+
+
+CREATE TABLE family1 (uid_of_dependee bigint NOT NULL,
+relation varchar(10) NOT NULL,
+uid_of_dependent bigint NOT NULL,
+PRIMARY  KEY(uid_of_dependee, uid_of_dependent, relation),
+FOREIGN KEY (uid_of_dependent) REFERENCES aadhar_card(uid)  ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+SELECT A.name, A.uid, A.gender, A.dob, B.relation, (SELECT C.name FROM aadhar_card C JOIN family1 D ON C.uid = D.uid_of_dependee WHERE D.uid_of_dependee = ? LIMIT 1) AS Dependee FROM aadhar_card A JOIN Family1 B ON A.uid = B.uid_of_dependent WHERE B.uid_of_dependee = ?;
+
+
+
+
